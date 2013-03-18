@@ -34,6 +34,37 @@ class LennardJonesForce:
 		ay =  np.sum(-magnitude * dy/dr, axis=1)
 		return ax, ay
 		
+class SpringForce:
+	def __init__(self, k):
+		self.k = k
+		
+	def __call__(self, c, t):
+		dx, dy = c.distance_matrix()
+		dr = np.sqrt(dx**2 + dy**2)
+		dr += np.identity((dr.size)**0.5) # adds identity matrix, removing 0's on the diagonal for division
+		magnitude_s = -self.k * (dr - 2*2**(1/6))
+		magnitude_s[c.no_springs] = 0.0
+				
+		ax = np.sum(-magnitude_s * dx/dr, axis=1)
+		ay = np.sum(-magnitude_s * dy/dr, axis=1)
+		return ax,ay
+		
+class MolecularFriction:
+	def __init__(self, sigma, epsilon, k):
+		self.lennard_jones = LennardJonesForce(sigma, epsilon)
+		self.spring_force = SpringForce(k)
+	def __call__(self,c,t):
+		lj_ax, lj_ay = self.lennard_jones(c, t)
+		s_ax, s_ay = self.spring_force(c, t)
+		
+		ax = lj_ax + s_ax
+		ay = lj_ay + s_ay
+		
+		for i in c.floor:
+			ax[i] = 0.0
+			ay[i] = 0.0
+		return ax, ay
+		
 if __name__ == "__main__":
 	width = 6
 	height = 6
@@ -44,7 +75,6 @@ if __name__ == "__main__":
 	m = np.array([1,1,1,1,1], dtype = "float64")
 	c = Container(width, height, x, y, vx, vy, m)
 	#print c.distance_matrix()
-	f = LennardJonesForce(1.0, 1.0)
-	fj = JesseLennardJones(1.0, 1.0)
+	f = MolecularFrictionForce(1.0, 1.0)
 	#print f(c,0)
-	print fj(c)
+	print f(c)

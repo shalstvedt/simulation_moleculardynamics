@@ -1,7 +1,7 @@
 from __future__ import division
 import numpy as np
 
-class Container:
+class Container(object):
     
 	def __init__(self, Lx, Ly, x=np.array([]), y=np.array([]), vx=np.array([]), vy=np.array([]), ax=np.array([]), ay=np.array([]), r=np.array([]), m=np.array([])):
 		self.Lx = Lx            # length in x-direction of box
@@ -55,6 +55,14 @@ class Container:
 		#dist_z[dist_z >  self.Lz/2] -= self.Lz
 		#dist_z[dist_z < -self.Lz/2] += self.Lz
 		return dist_x, dist_y, # dist_z
+		
+class FlooredContainer(Container):
+	def __init__(self, Lx, Ly, floor, dragged, damped, no_springs=[], x=np.array([]), y=np.array([]), vx=np.array([]), vy=np.array([]), ax=np.array([]), ay=np.array([]), r=np.array([]), m=np.array([])):
+		super(FlooredContainer, self).__init__(Lx, Ly, x=np.array([]), y=np.array([]), vx=np.array([]), vy=np.array([]), ax=np.array([]), ay=np.array([]), r=np.array([]), m=np.array([]))
+		self.floor = floor
+		self.dragged = dragged
+		self.damped = damped
+		self.no_springs = floor + no_springs
         
 
 if __name__ == "__main__":

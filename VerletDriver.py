@@ -35,13 +35,9 @@ class ContainerIntegrator:
 		self.container.vy = new_vy
 		self.container.ax = new_ax
 		self.container.ay = new_ay
-		#self.container.x[self.container.x>self.container.Lx/2] -= self.container.Lx
 		self.container.x[self.container.x>self.container.Lx/2] = self.container.x[self.container.x>self.container.Lx/2] % -self.container.Lx
-		#self.container.y[self.container.y>self.container.Ly/2] -= self.container.Ly
 		self.container.y[self.container.y>self.container.Ly/2] = self.container.y[self.container.y>self.container.Ly/2] % -self.container.Ly
-		#self.container.x[self.container.x<-self.container.Lx/2] += self.container.Lx
 		self.container.x[self.container.x<-self.container.Lx/2] = self.container.x[self.container.x<-self.container.Lx/2] % self.container.Lx
-		#self.container.y[self.container.y<-self.container.Ly/2] += self.container.Ly
 		self.container.y[self.container.y<-self.container.Ly/2] = self.container.y[self.container.y<-self.container.Ly/2] % self.container.Ly
 		self.history.append([new_x, new_y, new_vx, new_vy, new_ax, new_ay])
  
@@ -113,8 +109,10 @@ def EightParticleInitializer(Lx, Ly):
 	return c
 	
 def SquareLatticeInitializer(Lx, Ly):
+	#c = FlooredContainer(Lx, Ly, [0, 1, 2, 3, 4, 5, 6, 7,8,15,16,23,24,31,32,39,40,47,48,55,56,57,58,59,60,61,62,63], 0, 0, no_springs=range(64))
+	Ly = np.sqrt(3) / 2. * Ly  # Set this based on Lx
+	Lx = np.sqrt(3) / 2. * Lx  # Set this based on Lx
 	c = Container(Lx, Ly)
-	
 	N = 8             # Particles per row
 	d = 2.**(1/6.)    # Particle diameter
 	x = np.linspace(-c.Lx/2+d/2.,c.Lx/2-d/2,N)
@@ -123,6 +121,14 @@ def SquareLatticeInitializer(Lx, Ly):
 		for j in range(y.size):
 			c.add_particle(x[i],y[j],0,0,0,0,1,1)
 			
+	return c
+	
+def FrictionInitializer(floor_num, mol_len):
+	a = 2**(1/6)
+	c = FlooredContainer(floor_num*a, 10, range(floor_num), 0, 0)
+	for i in np.linspace(0, floor_num*a, floor_num):
+		c.add_particle(i, 2*a, 0, 0, 0, 0, 1, 1)
+	
 	return c
 	
 def GammaInitializer(Lx, Ly):
@@ -152,7 +158,7 @@ def TriangularLatticeInitializer(Lx, Ly):
             if np.mod(i,2)==0:
                 c.add_particle(x[j],y[i],0,0,0,0,1,1)
             else:
-                c.add_particle(xs[j],y[i],0,0,0,0,1,1)    
+                c.add_particle(xs[j],y[i],0,0,0,0,1,1)
     return c
 				
 def draw_circle( xy, radius, color="lightsteelblue", facecolor="red", alpha=1.0, ax=None ):
@@ -172,6 +178,8 @@ def plot_integrate(container, integrator):
 	pylab.ion()
 	pylab.xlim((-container.Lx/2,container.Lx/2))
 	pylab.ylim((-container.Ly/2,container.Ly/2))
+	#pylab.xlim((0, container.Lx))
+	#pylab.ylim((0, container.Ly))
 	pylab.grid()
 	pylab.title('Molecular Dynamics')
 	pylab.xlabel('Horizontal Distance')
@@ -187,7 +195,10 @@ def plot_integrate(container, integrator):
 
 	for i in range((int(Tend/dt))):
 		integrator.verlet_integrator(dt) # Step forward in time
-		if np.mod(count,pack_interval) == 0:
+		count+=1
+		
+		# Perform packing at the interval
+		if np.mod(count,pack_interval) == 0 and pack_enabled:
 			# c is the container object.
 			if count*dt > 4. and np.min([c.Lx,c.Ly]) > 8.*2.**(1/6.):
 				# Squeeze the box!
@@ -195,9 +206,9 @@ def plot_integrate(container, integrator):
 				c.Ly *= squeeze_factor
 				c.x  *=  squeeze_factor
 				c.y  *=  squeeze_factor
-
-		print "SQUEEZE", c.Lx, c.Ly
-		count+=1
+				print "SQUEEZE", c.Lx, c.Ly
+		
+		# Perform drawing
 		if np.mod(count,draw_interval) == 0:
 			ax.clear()
 			for j in range(c.x.size):
@@ -245,26 +256,36 @@ def plot_integrate(container, integrator):
 	
 ### BEGIN MAIN ###
 squeeze_factor = 0.98
-draw_interval = 5
+draw_interval = 1
 pack_interval = 20
-Tend = 15
+pack_enabled = True
+Tend = 20
 t0 = 0.
 dt = 0.01
-Lx = 15.
-Ly = 15.
+Lx = 9.
+Ly = 9.
 
 
 #fr = FileReader()
 #c = fr.read_container("test_file")
-f = LennardJonesForce(1.0, 1.0) #sigma, epsilon
+#f = MolecularFriction(1.0, 1.0, 10.0) #sigma, epsilon, k
+f = LennardJonesForce(1.0, 1.0)
 
-c = SquareLatticeInitializer(Lx, Ly)
+#c = FrictionInitializer(10, 5.)
 #c = LinearContainerInitializer(Lx, Ly)
 #c = TwoParticleInitializer(Lx, Ly) 
 #c = FourParticleInitializer(Lx, Ly)
 #c = EightParticleInitializer(Lx, Ly)
 #c = GammaInitializer(Lx, Ly) 
+c = SquareLatticeInitializer(Lx, Ly)
 #c = TriangularLatticeInitializer(Lx, Ly)
+  
+#rand_i = np.random.randint(0, len(c.x))
+
+#rand_vel = 0.1
+
+#c.vx[rand_i] = -rand_vel + np.random.rand()*2*rand_vel
+#c.vy[rand_i] = -rand_vel + np.random.rand()*2*rand_vel
   
 integrator = ContainerIntegrator(c, f, t0)
 
